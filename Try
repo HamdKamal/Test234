@@ -20,3 +20,121 @@ public async Task<List<Category>> CheckUserIsRegularAffairs(string? UserID, List
         return categories.Where(c => c.Id != "RAF").ToList();
     }
 }
+public class Users
+{
+    public string Id { get; set; }
+    public string FullName { get; set; }
+    public string UID { get; set; }
+    public bool EmailConfirmed { get; set; }
+    public string Email { get; set; }
+    public bool PhoneNumberConfirmed { get; set; }
+    public string PhoneNumber { get; set; }
+    public string NormalizedUserName { get; set; }
+    public string UserName { get; set; }
+    public bool IsRegularAffairs { get; set; }
+}
+public interface IUsersRepository
+{
+    Task<IEnumerable<Users>> GetAllAsync();
+    Task<Users> GetByIdAsync(string id);
+    Task AddAsync(Users user);
+    Task UpdateAsync(Users user);
+    Task DeleteAsync(string id);
+}
+
+public class UsersRepository : IUsersRepository
+{
+    private readonly AppDbContext _context;
+
+    public UsersRepository(AppDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<IEnumerable<Users>> GetAllAsync()
+    {
+        return await _context.Users.ToListAsync();
+    }
+
+    public async Task<Users> GetByIdAsync(string id)
+    {
+        return await _context.Users.FindAsync(id);
+    }
+
+    public async Task AddAsync(Users user)
+    {
+        user.Id = Guid.NewGuid().ToString();
+        _context.Users.Add(user);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task UpdateAsync(Users user)
+    {
+        _context.Users.Update(user);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task DeleteAsync(string id)
+    {
+        var user = await _context.Users.FindAsync(id);
+        if (user != null)
+        {
+            _context.Users.Remove(user);
+            await _context.SaveChangesAsync();
+        }
+    }
+}
+[Route("api/[controller]")]
+[ApiController]
+public class UsersController : ControllerBase
+{
+    private readonly IUsersRepository _repository;
+
+    public UsersController(IUsersRepository repository)
+    {
+        _repository = repository;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll()
+    {
+        var users = await _repository.GetAllAsync();
+        return Ok(users);
+    }
+
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById(string id)
+    {
+        var user = await _repository.GetByIdAsync(id);
+        if (user == null)
+            return NotFound();
+        return Ok(user);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] Users user)
+    {
+        await _repository.AddAsync(user);
+        return CreatedAtAction(nameof(GetById), new { id = user.Id }, user);
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(string id, [FromBody] Users user)
+    {
+        if (id != user.Id)
+            return BadRequest();
+
+        await _repository.UpdateAsync(user);
+        return NoContent();
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(string id)
+    {
+        await _repository.DeleteAsync(id);
+        return NoContent();
+    }
+}
+
+builder.Services.AddScoped<IUsersRepository, UsersRepository>();
+
