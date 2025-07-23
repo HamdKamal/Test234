@@ -1,0 +1,22 @@
+public async Task<List<Category>> CheckUserIsRegularAffairs(string? UserID, List<Category> categories)
+{
+    if (string.IsNullOrWhiteSpace(UserID))
+    {
+        // If no UserID provided, remove Regular Affairs
+        return categories.Where(c => c.Id != "RAF").ToList();
+    }
+
+    // ✅ Check if user exists in the database
+    var userExists = await dbContext.Users.AnyAsync(u => u.Id == UserID);
+
+    if (userExists)
+    {
+        // ✅ User exists → return all categories
+        return categories;
+    }
+    else
+    {
+        // ❌ User not found → return all except Regular Affairs
+        return categories.Where(c => c.Id != "RAF").ToList();
+    }
+}
